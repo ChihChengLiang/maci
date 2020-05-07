@@ -6,6 +6,17 @@ executors:
       - image: circleci/node:11.14.0
     working_directory: ~/maci/
 
+commands:
+  restore_cache_only:
+    steps:
+      - checkout:
+          path: ~/maci/
+      - restore_cache:
+          keys:
+            - v1.2-dependencies-{{ checksum "package-lock.json" }}
+            - v1.2-dependencies-{{ checksum "contracts/package-lock.json" }}-{{ checksum "circuits/package-lock.json" }}-{{ checksum "config/package-lock.json" }}-{{ checksum "domainobjs/package-lock.json" }}-{{ checksum "cli/package-lock.json" }}-{{ checksum "core/package-lock.json" }}-{{ checksum "integrationTests/package-lock.json" }}
+            - compiled-contracts
+
 jobs:
   build:
     executor: my-executor
@@ -95,9 +106,16 @@ jobs:
       - run:
           name: Compile contracts
           command: cd contracts && npm run compileSol
+
+      - save_cache:
+          # This cache is only intended to share between jobs, not accross workflow runs.
+          key: compiled-contracts
+          paths:
+            - contracts/compiled
   lint:
     executor: my-executor
     steps:
+      - restore_cache_only
       - run:
           name: Lint
           command: npm run lint
@@ -105,6 +123,7 @@ jobs:
   test-crypto:
     executor: my-executor
     steps:
+      - restore_cache_only
       - run:
           name: Run crypto tests
           command: cd crypto && npm run test
@@ -112,6 +131,7 @@ jobs:
   test-domainobjs:
     executor: my-executor
     steps:
+      - restore_cache_only
       - run:
           name: Run domainobjs tests
           command: cd domainobjs && npm run test
@@ -119,6 +139,7 @@ jobs:
   test-core:
     executor: my-executor
     steps:
+      - restore_cache_only
       - run:
           name: Run core (business logic) tests
           command: cd core && npm run test
@@ -126,6 +147,7 @@ jobs:
   test-circuit:
     executor: my-executor
     steps:
+      - restore_cache_only
       - run:
           name: Run circuit tests
           command: cd circuits && ./scripts/runTestsInCircleCi.sh
@@ -133,6 +155,7 @@ jobs:
   test-contract:
     executor: my-executor
     steps:
+      - restore_cache_only
       - run:
           name: Run contract tests
           command: cd contracts && ./scripts/runTestsInCircleCi.sh
@@ -140,6 +163,7 @@ jobs:
   test-integration:
     executor: my-executor
     steps:
+      - restore_cache_only
       - run:
           name: Run integration tests
           command: cd integrationTests && ./scripts/runTestsInCircleCi.sh
@@ -149,7 +173,9 @@ workflows:
   build_and_test:
     jobs:
       - build
-      - lint
+      - lint:
+          requires:
+            - build
       - test-crypto:
           requires:
             - build
