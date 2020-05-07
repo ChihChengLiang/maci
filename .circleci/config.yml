@@ -1,11 +1,14 @@
-version: 2
-jobs:
-  build:
-    docker:
-      - image: circleci/node:11.14.0
+version: 2.1
 
+executors:
+  my-executor:
+    docker: 
+      - image: circleci/node:11.14.0
     working_directory: ~/maci/
 
+jobs:
+  build:
+    executor: my-executor
     steps:
       - checkout:
           path: ~/maci/
@@ -92,34 +95,76 @@ jobs:
       - run:
           name: Compile contracts
           command: cd contracts && npm run compileSol
-
+  lint:
+    executor: my-executor
+    steps:
       - run:
           name: Lint
           command: npm run lint
 
+  test-crypto:
+    executor: my-executor
+    steps:
       - run:
           name: Run crypto tests
           command: cd crypto && npm run test
- 
+
+  test-domainobjs:
+    executor: my-executor
+    steps:
       - run:
           name: Run domainobjs tests
           command: cd domainobjs && npm run test
 
+  test-core:
+    executor: my-executor
+    steps:
       - run:
           name: Run core (business logic) tests
           command: cd core && npm run test
-          
+
+  test-circuit:
+    executor: my-executor
+    steps:
       - run:
           name: Run circuit tests
           command: cd circuits && ./scripts/runTestsInCircleCi.sh
 
+  test-contract:
+    executor: my-executor
+    steps:
       - run:
           name: Run contract tests
           command: cd contracts && ./scripts/runTestsInCircleCi.sh
 
+  test-integration:
+    executor: my-executor
+    steps:
       - run:
           name: Run integration tests
           command: cd integrationTests && ./scripts/runTestsInCircleCi.sh
 
-      - store_artifacts:
-          path: circuits/build
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
+      - lint
+      - test-crypto:
+          requires:
+            - build
+      - test-domainobjs:
+          requires: 
+            - build
+      - test-core:
+          requires:
+            - build
+      - test-circuit:
+          requires:
+            - build
+      - test-contract:
+          requires:
+            - build
+      - test-integration:
+          requires:
+            - build
