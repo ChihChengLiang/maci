@@ -17,8 +17,14 @@ commands:
       - restore_cache:
           keys:
             - v1.2-dependencies-{{ checksum "package-lock.json" }}
+      - restore_cache:
+          keys:
             - v1.2-dependencies-{{ checksum "contracts/package-lock.json" }}-{{ checksum "circuits/package-lock.json" }}-{{ checksum "config/package-lock.json" }}-{{ checksum "domainobjs/package-lock.json" }}-{{ checksum "cli/package-lock.json" }}-{{ checksum "core/package-lock.json" }}-{{ checksum "integrationTests/package-lock.json" }}
+      - restore_cache:
+          keys:
             - v1.2.3-dependencies-{{ checksum "circuits/build/.snark_checksum" }}
+      - restore_cache:
+          keys:
             - v1.2.3-dependencies-compiled-contracts
 
 jobs:
