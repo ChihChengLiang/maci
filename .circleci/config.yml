@@ -11,12 +11,15 @@ commands:
     steps:
       - checkout:
           path: ~/maci/
+      - run:
+          name: Checksum snark files
+          command: cd circuits/ && ./scripts/checksumSnarks.sh
       - restore_cache:
           keys:
             - v1.2-dependencies-{{ checksum "package-lock.json" }}
             - v1.2-dependencies-{{ checksum "contracts/package-lock.json" }}-{{ checksum "circuits/package-lock.json" }}-{{ checksum "config/package-lock.json" }}-{{ checksum "domainobjs/package-lock.json" }}-{{ checksum "cli/package-lock.json" }}-{{ checksum "core/package-lock.json" }}-{{ checksum "integrationTests/package-lock.json" }}
             - v1.2.3-dependencies-{{ checksum "circuits/build/.snark_checksum" }}
-            - compiled-contracts
+            - v1.2.3-dependencies-compiled-contracts
 
 jobs:
   build:
@@ -59,7 +62,7 @@ jobs:
           keys:
             - v1.2-dependencies-{{ checksum "contracts/package-lock.json" }}-{{ checksum "circuits/package-lock.json" }}-{{ checksum "config/package-lock.json" }}-{{ checksum "domainobjs/package-lock.json" }}-{{ checksum "cli/package-lock.json" }}-{{ checksum "core/package-lock.json" }}-{{ checksum "integrationTests/package-lock.json" }}
 
-      - run: npm run bootstrap && npm run build
+      - run: npm run bootstrap --ci && npm run build
 
       - save_cache:
           paths:
@@ -110,7 +113,7 @@ jobs:
 
       - save_cache:
           # This cache is only intended to share between jobs, not accross workflow runs.
-          key: compiled-contracts
+          key: v1.2.3-dependencies-compiled-contracts
           paths:
             - contracts/compiled
   lint:
