@@ -14,6 +14,11 @@ commands:
       - run:
           name: Checksum snark files
           command: cd circuits/ && ./scripts/checksumSnarks.sh
+
+      - run:
+          name: Checksum contracts
+          command: cd contracts/ && ./scripts/checksumContracts.sh
+
       - restore_cache:
           keys:
             - v1.2-dependencies-{{ checksum "package-lock.json" }}
@@ -25,8 +30,8 @@ commands:
             - v1.2.3-dependencies-{{ checksum "circuits/build/.snark_checksum" }}
       - restore_cache:
           keys:
-            - v1.2.3-dependencies-compiled-contracts
-      - run: npm run bootstrap && npm run build
+            - v1.2.3-dependencies-{{ checksum "contracts/build/.contract_checksum"}}
+      - run: npm run bootstrap
 
 jobs:
   build:
@@ -118,9 +123,13 @@ jobs:
           name: Compile contracts
           command: cd contracts && npm run compileSol
 
+      - run:
+          name: Checksum contracts
+          command: cd contracts/ && ./scripts/checksumContracts.sh
+
       - save_cache:
           # This cache is only intended to share between jobs, not accross workflow runs.
-          key: v1.2.3-dependencies-compiled-contracts
+          key: v1.2.3-dependencies-{{ checksum "contracts/build/.contract_checksum"}}
           paths:
             - contracts/compiled
   lint:
