@@ -1,11 +1,41 @@
-version: 2
-jobs:
-  build:
-    docker:
-      - image: circleci/node:11.14.0
+version: 2.1
 
+executors:
+  my-executor:
+    docker: 
+      - image: circleci/node:11.14.0
     working_directory: ~/maci/
 
+commands:
+  restore_cache_only:
+    steps:
+      - checkout:
+          path: ~/maci/
+      - run:
+          name: Checksum snark files
+          command: cd circuits/ && ./scripts/checksumSnarks.sh
+
+      - run:
+          name: Checksum contracts
+          command: cd contracts/ && ./scripts/checksumContracts.sh
+
+      - restore_cache:
+          keys:
+            - v1.2-dependencies-{{ checksum "package-lock.json" }}
+      - restore_cache:
+          keys:
+            - v1.2-dependencies-{{ checksum "contracts/package-lock.json" }}-{{ checksum "circuits/package-lock.json" }}-{{ checksum "config/package-lock.json" }}-{{ checksum "domainobjs/package-lock.json" }}-{{ checksum "cli/package-lock.json" }}-{{ checksum "core/package-lock.json" }}-{{ checksum "integrationTests/package-lock.json" }}
+      - restore_cache:
+          keys:
+            - v1.2.3-dependencies-{{ checksum "circuits/build/.snark_checksum" }}
+      - restore_cache:
+          keys:
+            - v1.2.3-dependencies-{{ checksum "contracts/build/.contract_checksum"}}
+      - run: npm run bootstrap
+
+jobs:
+  build:
+    executor: my-executor
     steps:
       - checkout:
           path: ~/maci/
@@ -94,32 +124,93 @@ jobs:
           command: cd contracts && npm run compileSol
 
       - run:
+          name: Checksum contracts
+          command: cd contracts/ && ./scripts/checksumContracts.sh
+
+      - save_cache:
+          # This cache is only intended to share between jobs, not accross workflow runs.
+          key: v1.2.3-dependencies-{{ checksum "contracts/build/.contract_checksum"}}
+          paths:
+            - contracts/compiled
+  lint:
+    executor: my-executor
+    steps:
+      - restore_cache_only
+      - run:
           name: Lint
           command: npm run lint
 
+  test-crypto:
+    executor: my-executor
+    steps:
+      - restore_cache_only
       - run:
           name: Run crypto tests
           command: cd crypto && npm run test
- 
+
+  test-domainobjs:
+    executor: my-executor
+    steps:
+      - restore_cache_only
       - run:
           name: Run domainobjs tests
           command: cd domainobjs && npm run test
 
+  test-core:
+    executor: my-executor
+    steps:
+      - restore_cache_only
       - run:
           name: Run core (business logic) tests
           command: cd core && npm run test
-          
+
+  test-circuit:
+    executor: my-executor
+    steps:
+      - restore_cache_only
       - run:
           name: Run circuit tests
           command: cd circuits && ./scripts/runTestsInCircleCi.sh
 
+  test-contract:
+    executor: my-executor
+    steps:
+      - restore_cache_only
       - run:
           name: Run contract tests
           command: cd contracts && ./scripts/runTestsInCircleCi.sh
 
+  test-integration:
+    executor: my-executor
+    steps:
+      - restore_cache_only
       - run:
           name: Run integration tests
           command: cd integrationTests && ./scripts/runTestsInCircleCi.sh
 
-      - store_artifacts:
-          path: circuits/build
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
+      - lint:
+          requires:
+            - build
+      - test-crypto:
+          requires:
+            - build
+      - test-domainobjs:
+          requires: 
+            - build
+      - test-core:
+          requires:
+            - build
+      - test-circuit:
+          requires:
+            - build
+      - test-contract:
+          requires:
+            - build
+      - test-integration:
+          requires:
+            - build
